@@ -46,6 +46,7 @@ export default function Dashboard() {
           <WeightTracker />
         </div>
 
+
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 md:col-span-2">
           <LogWorkout />
         </div>
