@@ -11,84 +11,51 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
-  ReferenceDot,
-  Label,
 } from "recharts";
 
-// Helper: group by week
-function groupByWeek(data: any[], key: string) {
-  const weeks: Record<string, number[]> = {};
-  data.forEach((item) => {
-    const d = new Date(item.date);
-    const weekKey = `${d.getFullYear()}-W${Math.ceil(
-      (d.getDate() + d.getDay()) / 7
-    )}`;
-    if (!weeks[weekKey]) weeks[weekKey] = [];
-    if (item[key]) weeks[weekKey].push(item[key]);
-  });
-
-  return Object.entries(weeks).map(([week, values]) => ({
-    week,
-    [key]: values.reduce((a, b) => a + b, 0) / values.length,
-  }));
-}
-
 export default function ProgressCharts() {
-  const [weeklyData, setWeeklyData] = useState<any[]>([]);
-  const targetWeight = 70; // Example goal in kg
-  const milestones: any[] = [];
+  const [progressData, setProgressData] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const targetWeight = 70; // Example goal
 
   const fetchProgress = async () => {
+    setLoading(true);
     try {
       const res = await axios.get("/api/progress?userId=alex123");
       if (res.data.success) {
         const { workouts, weights } = res.data;
 
-        const weightData = weights.map((w: any) => ({
-          date: new Date(w.date).toLocaleDateString(),
-          weight: w.value,
-        }));
+        const merged: any[] = [];
 
-        const workoutData = workouts.map((wo: any) => ({
-          date: new Date(wo.date).toLocaleDateString(),
-          duration: wo.duration,
-        }));
-
-        const weeklyWeights = groupByWeek(weightData, "weight");
-        const weeklyWorkouts = groupByWeek(workoutData, "duration");
-
-        const weeklyMerged = weeklyWeights.map((w) => ({
-          week: w.week,
-          weight: w.weight,
-          duration:
-            weeklyWorkouts.find((wo) => wo.week === w.week)?.duration || 0,
-        }));
-
-        setWeeklyData(weeklyMerged);
-
-        // Example milestone logic
-        weeklyMerged.forEach((entry, idx) => {
-          if (idx > 0) {
-            const prev = weeklyMerged[idx - 1];
-            if (prev.weight - entry.weight >= 5) {
-              milestones.push({
-                week: entry.week,
-                weight: entry.weight,
-                label: "Lost 5kg 🎉",
-              });
-            }
-            if (entry.duration >= 300) {
-              milestones.push({
-                week: entry.week,
-                duration: entry.duration,
-                label: "Hit 5h workouts 💪",
-              });
-            }
-          }
+        weights.forEach((w: any) => {
+          merged.push({
+            date: new Date(w.date).toLocaleDateString(),
+            weight: w.value,
+          });
         });
+
+        workouts.forEach((wo: any) => {
+          merged.push({
+            date: new Date(wo.date).toLocaleDateString(),
+            duration: wo.duration,
+          });
+        });
+
+        merged.sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+
+        setProgressData(merged);
+        setError(null);
+      } else {
+        setError(res.data.error || "Failed to load progress data");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to fetch progress", err);
+      setError("Unable to load progress data. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -101,39 +68,45 @@ export default function ProgressCharts() {
       <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
         Progress Charts
       </h2>
-      <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={weeklyData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="week" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          {/* Weekly average weight */}
-          <Line type="monotone" dataKey="weight" stroke="#8884d8" />
-          {/* Weekly average workout duration */}
-          <Line type="monotone" dataKey="duration" stroke="#82ca9d" />
-          {/* Goal line */}
-          <ReferenceLine
-            y={targetWeight}
-            label="Target Weight"
-            stroke="red"
-            strokeDasharray="3 3"
-          />
-          {/* Milestones */}
-          {milestones.map((m, i) => (
-            <ReferenceDot
-              key={i}
-              x={m.week}
-              y={m.weight || m.duration}
-              r={6}
-              fill="gold"
-              stroke="black"
-            >
-              <Label value={m.label} position="top" />
-            </ReferenceDot>
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+
+      {loading ? (
+        <div className="text-center text-gray-500">Loading progress data...</div>
+      ) : error ? (
+        <div className="text-center">
+          <p className="text-red-500 mb-2">{error}</p>
+          <button
+            onClick={fetchProgress}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      ) : progressData.length === 0 ? (
+        <div className="text-gray-500 text-center">No data available</div>
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={progressData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="weight"
+              stroke="#8884d8"
+              activeDot={{ r: 8 }}
+            />
+            <Line type="monotone" dataKey="duration" stroke="#82ca9d" />
+            <ReferenceLine
+              y={targetWeight}
+              label="Target Weight"
+              stroke="red"
+              strokeDasharray="3 3"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }

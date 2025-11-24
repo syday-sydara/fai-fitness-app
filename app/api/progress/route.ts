@@ -8,13 +8,30 @@ export async function GET(req: Request) {
   const userId = searchParams.get("userId");
 
   if (!userId) {
-    return NextResponse.json({ success: false, error: "Missing userId" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "Missing userId" },
+      { status: 400 }
+    );
   }
 
-  const [workouts, weights] = await Promise.all([
-    prisma.workout.findMany({ where: { userId }, orderBy: { date: "desc" } }),
-    prisma.weight.findMany({ where: { userId }, orderBy: { date: "desc" } }),
-  ]);
+  try {
+    const [workouts, weights] = await Promise.all([
+      prisma.workout.findMany({
+        where: { userId },
+        orderBy: { date: "desc" },
+      }),
+      prisma.weight.findMany({
+        where: { userId },
+        orderBy: { date: "desc" },
+      }),
+    ]);
 
-  return NextResponse.json({ success: true, workouts, weights });
+    return NextResponse.json({ success: true, workouts, weights });
+  } catch (err) {
+    console.error("Progress API error:", err);
+    return NextResponse.json(
+      { success: false, error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
 }
