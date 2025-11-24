@@ -1,50 +1,35 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import Weight from "@/models/Weight";
+import { PrismaClient } from "@prisma/client";
 
-interface WeightInput {
-  userId?: string;
-  date: string;
-  weight: number;
-}
-
-function validateWeightInput(body: WeightInput) {
-  if (!body.weight || typeof body.weight !== "number") return "Weight must be a number";
-  if (body.weight < 30 || body.weight > 300) return "Weight must be between 30kg and 300kg";
-  if (!body.date || isNaN(Date.parse(body.date))) return "Date must be a valid ISO string";
-  if (!body.userId) return "User ID is required";
-  return null;
-}
+const prisma = new PrismaClient();
 
 export async function GET(req: Request) {
-  try {
-    await connectDB();
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
-    const query = userId ? { userId } : {};
-    const weights = await Weight.find(query).sort({ date: 1 });
-    return NextResponse.json({ success: true, data: weights, error: null });
-  } catch (err) {
-    console.error("GET /api/weight error:", err);
-    return NextResponse.json({ success: false, data: null, error: "Failed to fetch weights" }, { status: 500 });
+  const { searchParams } = new URL(req.url);
+  const userId = searchParams.get("userId");
+
+  if (!userId) {
+    return NextResponse.json({ success: false, error: "Missing userId" }, { status: 400 });
   }
+
+  const weights = await prisma.weight.findMany({
+    where: { userId },
+    orderBy: { date: "desc" },
+  });
+
+  return NextResponse.json({ success: true, data: weights });
 }
 
 export async function POST(req: Request) {
-  try {
-    await connectDB();
-    const body: WeightInput = await req.json();
+  const body = await req.json();
+  const { userId, value, date } = body;
 
-    const validationError = validateWeightInput(body);
-    if (validationError) {
-      return NextResponse.json({ success: false, data: null, error: validationError }, { status: 400 });
-    }
-
-    const weight = new Weight(body);
-    await weight.save();
-    return NextResponse.json({ success: true, data: weight, error: null });
-  } catch (err) {
-    console.error("POST /api/weight error:", err);
-    return NextResponse.json({ success: false, data: null, error: "Failed to save weight" }, { status: 500 });
+  if (!userId || !value) {
+    return NextResponse.json({ success: false, error: "Missing fields" }, { status: 400 });
   }
+
+  const weight = await prisma.weight.create({
+    data: { userId, value, date: new Date(date) },
+  });
+
+  return NextResponse.json({ success: true, data: weight });
 }

@@ -1,26 +1,62 @@
 "use client";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
-const weightData = [
-  { date: "Nov 15", weight: 72 },
-  { date: "Nov 18", weight: 71.5 },
-  { date: "Nov 21", weight: 71 },
-];
+export default function WeatherTile({
+  forecast = [],
+  isMock = false,
+}: {
+  forecast?: any[];
+  isMock?: boolean;
+}) {
+  if (!forecast || forecast.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">
+          5-Day Forecast (Toronto)
+        </h2>
+        <p className="text-gray-600 dark:text-gray-400">Loading forecast...</p>
+      </div>
+    );
+  }
 
-export default function WeightTracker() {
   return (
-    <div>
+    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
       <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">
-        Weight Tracker
+        5-Day Forecast (Toronto)
       </h2>
-      <LineChart width={500} height={300} data={weightData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" />
-        <YAxis domain={["auto", "auto"]} />
-        <Tooltip />
-        <Legend />
-        <Line type="monotone" dataKey="weight" stroke="#ff7300" />
-      </LineChart>
+      {isMock && (
+        <p className="text-yellow-600 dark:text-yellow-400 mb-2">
+          ⚠️ Showing mock data (API not connected)
+        </p>
+      )}
+
+      {/* Forecast list */}
+      <ul className="space-y-2 text-gray-700 dark:text-gray-300 mb-4">
+        {forecast.map((day, i) => (
+          <li key={i}>
+            {day.date}: {day.avgTemp}°C — {day.description}
+          </li>
+        ))}
+      </ul>
+
+      {/* Forecast chart */}
+      <ResponsiveContainer width="100%" height={250}>
+        <LineChart data={forecast}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="date" />
+          <YAxis tickFormatter={(v) => `${v}°C`} />
+          <Tooltip />
+          <Line type="monotone" dataKey="avgTemp" stroke="#1e90ff" />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }

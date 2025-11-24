@@ -1,0 +1,23 @@
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Workout {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  exercise  String
+  duration  Int
+  intensity String
+  date      DateTime @default(now())
+}
+
+model Weight {
+  id     Int      @id @default(autoincrement())
+  userId String
+  value  Float
+  date   DateTime @default(now())
+}
