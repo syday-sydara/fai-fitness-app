@@ -1,90 +1,32 @@
 "use client";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-type ForecastDay = {
-  date: string;
-  avgTemp: number;
-  description: string;
-};
+type ForecastDay = { date: string; avgTemp: string; description: string };
 
-export default function WeatherTile({
-  forecast = [],
-  isMock = false,
-}: {
-  forecast?: ForecastDay[];
-  isMock?: boolean;
-}) {
-  if (!forecast || forecast.length === 0) {
-    return (
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">
-          5-Day Forecast (Toronto)
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400">Loading forecast...</p>
-      </div>
-    );
-  }
+export default function WeatherTile() {
+  const [forecast, setForecast] = useState<ForecastDay[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Add icons based on description
-  const getIcon = (desc: string) => {
-    const d = desc.toLowerCase();
-    if (d.includes("rain")) return "🌧️";
-    if (d.includes("snow")) return "❄️";
-    if (d.includes("cloud")) return "☁️";
-    return "☀️";
-  };
+  useEffect(() => {
+    axios.get("/api/weather")
+      .then((res) => { if (res.data.success) setForecast(res.data.data || []); })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <p className="text-gray-500">Loading forecast...</p>;
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-      <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">
-        5-Day Forecast (Toronto)
-      </h2>
-      {isMock && (
-        <p className="text-yellow-600 dark:text-yellow-400 mb-2">
-          ⚠️ Showing mock data (API not connected)
-        </p>
-      )}
-
-      {/* Forecast list */}
-      <ul className="space-y-2 text-gray-700 dark:text-gray-300 mb-4">
-        {forecast.map((day) => (
-          <li key={day.date} className="flex justify-between">
-            <span>
-              {day.date}: {day.avgTemp}°C
-            </span>
-            <span>
-              {getIcon(day.description)} {day.description}
-            </span>
+    <div>
+      <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">Weather</h2>
+      <ul className="space-y-2">
+        {forecast.map((d) => (
+          <li key={d.date} className="flex justify-between">
+            <span>{d.date}</span>
+            <span>{d.avgTemp}°C — {d.description}</span>
           </li>
         ))}
       </ul>
-
-      {/* Forecast chart */}
-      <ResponsiveContainer width="100%" height={250}>
-        <LineChart
-          data={forecast.map((d) => ({ ...d, avgTemp: Number(d.avgTemp) }))}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis tickFormatter={(v) => `${v}°C`} />
-          <Tooltip />
-          <Line
-            type="monotone"
-            dataKey="avgTemp"
-            stroke="#1e90ff"
-            dot={{ r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
     </div>
   );
 }
