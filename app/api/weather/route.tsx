@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 
-const CITY = "Toronto"; // still hardcoded for now
 const API_KEY = process.env.OPENWEATHER_API_KEY;
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     if (!API_KEY) {
       return NextResponse.json(
@@ -12,8 +11,11 @@ export async function GET() {
       );
     }
 
+    const { searchParams } = new URL(req.url);
+    const city = searchParams.get("city") || "Toronto";
+
     const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/forecast?q=${CITY}&units=metric&appid=${API_KEY}`
+      `https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${API_KEY}`
     );
 
     if (!res.ok) {
@@ -39,14 +41,21 @@ export async function GET() {
       dailyForecast[date].descriptions.push(entry.weather[0].description);
     });
 
-    const forecast = Object.entries(dailyForecast).map(([date, info]) => ({
-      date,
-      avgTemp: (info.temps.reduce((a, b) => a + b, 0) / info.temps.length).toFixed(1),
-      description: info.descriptions[0],
-    }));
+    const forecast = Object.entries(dailyForecast).map(([date, info]) => {
+      const avgTemp = (info.temps.reduce((a, b) => a + b, 0) / info.temps.length).toFixed(1);
+      const description =
+        info.descriptions.sort(
+          (a, b) =>
+            info.descriptions.filter((v) => v === a).length -
+            info.descriptions.filter((v) => v === b).length
+        ).pop() || info.descriptions[0];
+
+      return { date, avgTemp, description };
+    });
 
     return NextResponse.json({ success: true, data: forecast });
   } catch (err) {
+    console.error("Weather API error:", err);
     return NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 }
