@@ -5,6 +5,9 @@ import ProgressCharts from "@/components/ProgressCharts";
 import WeightTracker from "@/components/WeightTracker";
 import LogWorkout from "@/components/LogWorkout";
 import TodoList from "@/components/TodoList";
+import AITrainer from "@/components/AITrainer";
+
+
 
 export default function Dashboard() {
   const user = { id: "alex123", name: "Alex" };
@@ -33,6 +36,7 @@ export default function Dashboard() {
           <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">
             Today’s Plan
           </h2>
+          <AITrainer userId={user.id} goal="strength" />
           <ul className="space-y-2">
             {[
               "Warm-up: 5 min walk + mobility",
