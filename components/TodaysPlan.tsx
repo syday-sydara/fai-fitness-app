@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import axios from "axios";
 
 type Forecast = {
   avgTemp: string;
@@ -15,14 +14,14 @@ type PlanItem = {
 export default function TodaysPlan() {
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [plan, setPlan] = useState<PlanItem[]>([]);
-  const [readinessScore, setReadinessScore] = useState<number>(7);
-  const [loading, setLoading] = useState(true);
+  const readinessScore = 7;
 
   const fetchForecast = async () => {
     try {
-      const res = await axios.get("/api/weather");
-      if (res.data.success && res.data.data.length > 0) {
-        const today = res.data.data[0];
+      const res = await fetch("/api/weather");
+      const data = await res.json();
+      if (data.success && data.data.length > 0) {
+        const today = data.data[0];
         setForecast(today);
         generatePlan(today);
       } else {
@@ -30,8 +29,6 @@ export default function TodaysPlan() {
       }
     } catch {
       generatePlan(null);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -63,24 +60,16 @@ export default function TodaysPlan() {
     fetchForecast();
   }, []);
 
-  if (loading) {
-    return <p className="text-center text-gray-500">Loading today’s plan...</p>;
-  }
-
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
-        Today’s Plan
-      </h2>
-      <p className="text-gray-600 dark:text-gray-400 mb-2">
-        Readiness Score: {readinessScore}/10
-      </p>
+    <div className="bg-white shadow rounded-lg p-6">
+      <h2 className="text-xl font-semibold mb-4">Today’s Plan</h2>
+      <p className="text-gray-600 mb-2">Readiness Score: {readinessScore}/10</p>
       {forecast && (
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-gray-600 mb-4">
           Weather: {forecast.description} ({forecast.avgTemp}°C)
         </p>
       )}
-      <ul className="space-y-3 text-gray-700 dark:text-gray-300">
+      <ul className="space-y-3 text-gray-700">
         {plan.map((p) => (
           <li key={p.time} className="flex justify-between">
             <span className="font-medium">{p.time}</span>

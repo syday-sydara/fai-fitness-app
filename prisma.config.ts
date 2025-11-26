@@ -3,7 +3,7 @@ import { defineConfig } from "@prisma/config";
 export default defineConfig({
   datasource: {
     db: {
-      adapter: "sqlite", // or "postgresql", "mysql"
+      adapter: "sqlite",
       url: process.env.DATABASE_URL,
     },
   },

@@ -22,9 +22,15 @@ model Weight {
   date   DateTime @default(now())
 }
 
-model Todo {
-  id    String  @id @default(uuid())
-  text  String
-  done  Boolean @default(false)
-  date  DateTime @default(now())
+model WorkoutPlan {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @default(now())
+  readiness Int
+  weather   String
+  avgTemp   Float
+  focus     String
+  notes     String?
+  items     Json
+  completed Boolean  @default(false)
 }
