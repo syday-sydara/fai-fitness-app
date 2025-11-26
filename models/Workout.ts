@@ -1,30 +1,24 @@
-import mongoose, { Schema, model, models, Document } from "mongoose";
+import mongoose from "mongoose";
 
-// Define a TypeScript interface for strong typing
-interface WorkoutDoc extends Document {
-  userId: string;
-  date: Date;
-  sets: number;
-  reps: number;
-  rpe: number;
-  weight?: number; // optional
+const MONGODB_URI = process.env.MONGODB_URI!;
+
+if (!MONGODB_URI) {
+  throw new Error("Please define the MONGODB_URI environment variable inside .env.local");
 }
 
-// Define the schema with validation and constraints
-const WorkoutSchema = new Schema<WorkoutDoc>(
-  {
-    userId: { type: String, required: true },
-    date: { type: Date, required: true },
-    sets: { type: Number, required: true, min: 1, max: 20 },
-    reps: { type: Number, required: true, min: 1, max: 50 },
-    rpe: { type: Number, required: true, min: 1, max: 10 },
-    weight: { type: Number, min: 0 }, // optional but constrained
-  },
-  { timestamps: true } // adds createdAt and updatedAt automatically
-);
+let cached = (global as any).mongoose;
 
-// Add an index for performance and uniqueness
-WorkoutSchema.index({ userId: 1, date: 1 }, { unique: true });
+if (!cached) {
+  cached = (global as any).mongoose = { conn: null, promise: null };
+}
 
-// Export the model safely (avoids recompilation issues in Next.js)
-export default models.Workout || model<WorkoutDoc>("Workout", WorkoutSchema);
+async function dbConnect() {
+  if (cached.conn) return cached.conn;
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(MONGODB_URI).then((mongoose) => mongoose);
+  }
+  cached.conn = await cached.promise;
+  return cached.conn;
+}
+
+export default dbConnect;
