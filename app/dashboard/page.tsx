@@ -1,71 +1,49 @@
-"use client";
-import { useEffect, useState } from "react";
-import WeatherTile from "@/components/WeatherTile";
+import DashboardCard from "@/components/DashboardCard";
+import AITrainer from "@/components/AITrainer";
+import BodyweightExercises from "@/components/BodyweightExercises";
 import ProgressCharts from "@/components/ProgressCharts";
-import LogWorkout from "@/components/LogWorkout";
-import WeightTracker from "@/components/WeightTracker";
+import ReadinessGauge from "@/components/ReadinessGauge";
 
-export default function Dashboard() {
-  const user = { name: "Alex" };
-  const [readinessScore, setReadinessScore] = useState<number | null>(null);
-  const [todayPlan, setTodayPlan] = useState<string[]>([]);
-
-  useEffect(() => {
-    async function fetchData() {
-      const res = await fetch(`/api/plan?userId=alex123&goal=general`);
-      const data = await res.json();
-      if (data.success) setTodayPlan(data.data.plan);
-
-      const progressRes = await fetch(`/api/progress?userId=alex123`);
-      const progressData = await progressRes.json();
-      if (progressData.success) setReadinessScore(progressData.data.readinessScore);
-    }
-    fetchData();
-  }, []);
-
+export default function Dashboard({ userId }: { userId: string }) {
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 transition-colors">
-      <header className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Welcome, {user.name}!
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Readiness Score: {readinessScore ?? "Loading..."}/10
+    <main className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 p-6">
+      {/* AI Trainer Advice */}
+      <DashboardCard title="AI Trainer">
+        <AITrainer userId={userId} />
+      </DashboardCard>
+
+      {/* Bodyweight Exercises */}
+      <DashboardCard title="Bodyweight Exercises">
+        <BodyweightExercises />
+      </DashboardCard>
+
+      {/* Progress Charts */}
+      <DashboardCard title="Progress Charts">
+        <ProgressCharts />
+      </DashboardCard>
+
+      {/* Readiness Gauge */}
+      <DashboardCard title="Readiness">
+        <div className="flex justify-center">
+          <ReadinessGauge score={7} />
+        </div>
+      </DashboardCard>
+
+      {/* Recent Workouts */}
+      <DashboardCard title="Recent Workouts">
+        <ul className="space-y-2 text-gray-700 dark:text-gray-300">
+          <li>🏃 Jogging - 30 min</li>
+          <li>💪 Push-ups - 3 sets of 15</li>
+          <li>🧘 Plank - 2 min</li>
+        </ul>
+      </DashboardCard>
+
+      {/* Weight Tracking */}
+      <DashboardCard title="Weight Tracking">
+        <p className="text-gray-700 dark:text-gray-300">
+          Last recorded: <strong>72 kg</strong> on Nov 25, 2025
         </p>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <section className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">Weather</h2>
-          <WeatherTile />
-        </section>
-
-        <section className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">Today’s Plan</h2>
-          <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-1">
-            {todayPlan.length > 0 ? (
-              todayPlan.map((exercise, i) => <li key={i}>{exercise}</li>)
-            ) : (
-              <li>Loading plan...</li>
-            )}
-          </ul>
-        </section>
-
-        <section className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 md:col-span-2">
-          <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">Progress</h2>
-          <ProgressCharts />
-        </section>
-
-        <section className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 md:col-span-2">
-          <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">Weight Tracker</h2>
-          <WeightTracker />
-        </section>
-
-        <section className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 md:col-span-2">
-          <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">Log Workout</h2>
-          <LogWorkout />
-        </section>
-      </div>
+      </DashboardCard>
     </main>
   );
 }

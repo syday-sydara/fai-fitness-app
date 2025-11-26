@@ -1,6 +1,5 @@
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -21,4 +20,11 @@ model Weight {
   userId String
   value  Float
   date   DateTime @default(now())
+}
+
+model Todo {
+  id    String  @id @default(uuid())
+  text  String
+  done  Boolean @default(false)
+  date  DateTime @default(now())
 }

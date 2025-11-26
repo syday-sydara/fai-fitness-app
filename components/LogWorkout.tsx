@@ -2,10 +2,29 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 
+interface WorkoutForm {
+  sets: string;
+  reps: string;
+  rpe: string;
+  weight: string;
+}
+
 export default function LogWorkout({ userId }: { userId: string }) {
-  const [form, setForm] = useState({ sets: "", reps: "", rpe: "", weight: "" });
+  const [form, setForm] = useState<WorkoutForm>({
+    sets: "",
+    reps: "",
+    rpe: "",
+    weight: "",
+  });
+  const [loading, setLoading] = useState(false);
 
   const saveWorkout = async () => {
+    if (!form.sets || !form.reps || !form.rpe) {
+      toast.error("Please fill in sets, reps, and RPE");
+      return;
+    }
+
+    setLoading(true);
     try {
       const res = await fetch("/api/workouts", {
         method: "POST",
@@ -27,22 +46,32 @@ export default function LogWorkout({ userId }: { userId: string }) {
       }
     } catch {
       toast.error("Network error");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      {["sets", "reps", "rpe", "weight"].map((f) => (
+      {(["sets", "reps", "rpe", "weight"] as (keyof WorkoutForm)[]).map((f) => (
         <input
           key={f}
+          name={f}
+          aria-label={f}
           type="number"
           placeholder={f}
-          value={(form as any)[f]}
+          value={form[f]}
           onChange={(e) => setForm({ ...form, [f]: e.target.value })}
           className="border p-2 rounded"
         />
       ))}
-      <button onClick={saveWorkout} className="col-span-2 px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+      <button
+        onClick={saveWorkout}
+        disabled={loading}
+        className="col-span-2 px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+      >
+        {loading ? "Saving..." : "Save"}
+      </button>
     </div>
   );
 }

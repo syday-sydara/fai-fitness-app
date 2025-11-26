@@ -1,41 +1,49 @@
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
 
-let todos: { id: string; text: string; done: boolean }[] = [];
-
+// GET all todos
 export async function GET() {
-  return NextResponse.json({ success: true, data: todos });
-}
-
-export async function POST(req: Request) {
-  const { text } = await req.json();
-  if (typeof text !== "string" || !text.trim()) {
-    return NextResponse.json({ success: false, error: "Invalid todo text" }, { status: 400 });
+  try {
+    const todos = await prisma.todo.findMany({ orderBy: { date: "desc" } });
+    return NextResponse.json({ success: true, data: todos });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: "Failed to fetch todos" });
   }
-  const todo = { id: randomUUID(), text: text.trim(), done: false };
-  todos.push(todo);
-  return NextResponse.json({ success: true, data: todo }, { status: 201 });
 }
 
+// POST new todo
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const todo = await prisma.todo.create({ data: { text: body.text } });
+    return NextResponse.json({ success: true, data: todo });
+  } catch {
+    return NextResponse.json({ success: false, error: "Failed to add todo" });
+  }
+}
+
+// PUT toggle todo
 export async function PUT(req: Request) {
-  const { id, done, text } = await req.json();
-  const t = todos.find((t) => t.id === id);
-  if (!t) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
-
-  if (typeof done === "boolean") t.done = done;
-  if (typeof text === "string" && text.trim()) t.text = text.trim();
-
-  return NextResponse.json({ success: true, data: t });
+  try {
+    const body = await req.json();
+    const todo = await prisma.todo.update({
+      where: { id: body.id },
+      data: { done: body.done },
+    });
+    return NextResponse.json({ success: true, data: todo });
+  } catch {
+    return NextResponse.json({ success: false, error: "Failed to update todo" });
+  }
 }
 
+// DELETE todo
 export async function DELETE(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
-  if (!id) return NextResponse.json({ success: false, error: "Missing id" }, { status: 400 });
-
-  const exists = todos.some((t) => t.id === id);
-  if (!exists) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
-
-  todos = todos.filter((t) => t.id !== id);
-  return NextResponse.json({ success: true, data: { id } });
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id")!;
+    await prisma.todo.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ success: false, error: "Failed to delete todo" });
+  }
 }

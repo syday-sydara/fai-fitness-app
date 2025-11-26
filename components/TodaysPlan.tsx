@@ -15,7 +15,8 @@ type PlanItem = {
 export default function TodaysPlan() {
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [plan, setPlan] = useState<PlanItem[]>([]);
-  const readinessScore = 7; // Example: could be dynamic later
+  const [readinessScore, setReadinessScore] = useState<number>(7);
+  const [loading, setLoading] = useState(true);
 
   const fetchForecast = async () => {
     try {
@@ -29,6 +30,8 @@ export default function TodaysPlan() {
       }
     } catch {
       generatePlan(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -59,6 +62,10 @@ export default function TodaysPlan() {
   useEffect(() => {
     fetchForecast();
   }, []);
+
+  if (loading) {
+    return <p className="text-center text-gray-500">Loading today’s plan...</p>;
+  }
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
