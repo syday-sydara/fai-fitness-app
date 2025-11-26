@@ -11,19 +11,14 @@ export async function GET(req: Request) {
     const userId = searchParams.get("userId");
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "Missing userId" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Missing userId" }, { status: 400 });
     }
 
-    const weights = await Weight.find({ userId }).sort({ date: -1 });
+    const weights = await Weight.find({ userId }).sort({ date: -1 }).limit(50);
     return NextResponse.json({ success: true, data: weights });
   } catch (err: any) {
-    return NextResponse.json(
-      { success: false, error: err.message },
-      { status: 500 }
-    );
+    const errorMsg = process.env.NODE_ENV === "development" ? err.message : "Internal Server Error";
+    return NextResponse.json({ success: false, error: errorMsg }, { status: 500 });
   }
 }
 
@@ -35,24 +30,14 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { userId, weight } = body;
 
-    if (!userId || !weight) {
-      return NextResponse.json(
-        { success: false, error: "Missing required fields" },
-        { status: 400 }
-      );
+    if (!userId || typeof weight !== "number") {
+      return NextResponse.json({ success: false, error: "Invalid or missing fields" }, { status: 400 });
     }
 
-    const entry = await Weight.create({
-      userId,
-      weight,
-      date: new Date(),
-    });
-
-    return NextResponse.json({ success: true, data: entry });
+    const entry = await Weight.create({ userId, weight });
+    return NextResponse.json({ success: true, data: entry }, { status: 201 });
   } catch (err: any) {
-    return NextResponse.json(
-      { success: false, error: err.message },
-      { status: 500 }
-    );
+    const errorMsg = process.env.NODE_ENV === "development" ? err.message : "Internal Server Error";
+    return NextResponse.json({ success: false, error: errorMsg }, { status: 500 });
   }
 }

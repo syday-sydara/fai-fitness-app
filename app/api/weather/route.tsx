@@ -7,6 +7,7 @@ export async function GET(req: Request) {
     if (!API_KEY) {
       return NextResponse.json({ success: false, error: "Missing API key" }, { status: 500 });
     }
+
     const { searchParams } = new URL(req.url);
     const city = searchParams.get("city") || "Toronto";
 
@@ -14,8 +15,12 @@ export async function GET(req: Request) {
       `https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${API_KEY}`
     );
     if (!res.ok) {
-      return NextResponse.json({ success: false, error: "Weather API failed" }, { status: res.status });
+      return NextResponse.json(
+        { success: false, error: `Weather API failed: ${res.statusText}` },
+        { status: res.status }
+      );
     }
+
     const data = await res.json();
 
     const daily: Record<string, { temps: number[]; descriptions: string[] }> = {};
@@ -26,12 +31,14 @@ export async function GET(req: Request) {
       daily[key].descriptions.push(entry.weather[0].description);
     });
 
-    const forecast = Object.entries(daily).map(([date, info]) => {
+    const forecast = Object.entries(daily).slice(0, 5).map(([date, info]) => {
       const avgTemp = (info.temps.reduce((a, b) => a + b, 0) / info.temps.length).toFixed(1);
-      const description =
-        info.descriptions.sort(
-          (a, b) => info.descriptions.filter((v) => v === a).length - info.descriptions.filter((v) => v === b).length
-        ).pop() || info.descriptions[0];
+
+      // frequency map for descriptions
+      const counts: Record<string, number> = {};
+      info.descriptions.forEach((d) => (counts[d] = (counts[d] || 0) + 1));
+      const description = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+
       return { date, avgTemp, description };
     });
 
