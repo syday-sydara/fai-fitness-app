@@ -9,6 +9,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  BarChart,
+  Bar,
 } from "recharts";
 
 const getWeatherIcon = (desc: string) => {
@@ -27,43 +29,79 @@ const getTempColor = (temp: number) => {
   return "bg-orange-100 text-orange-800";
 };
 
-export default function WeightTracker() {
+export default function WeeklyDashboard() {
   const [weight, setWeight] = useState("");
   const [logs, setLogs] = useState<any[]>([]);
-  const [forecast, setForecast] = useState<any[]>([]);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [days, setDays] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    axios.get("/api/weight?userId=alex123").then((res) => {
-      if (res.data.success) setLogs(res.data.data || []);
-    });
-    axios.get("/api/weather").then((res) => {
-      if (res.data.success) {
-        setForecast(res.data.data || []);
-        const recs = res.data.data.map((day: any) => {
-          const temp = parseFloat(day.avgTemp);
-          const desc = day.description.toLowerCase();
-          let suggestion = "Outdoor run or park workout";
-          if (desc.includes("rain") || desc.includes("snow") || temp < 5) {
-            suggestion = "Indoor strength or yoga session";
-          } else if (temp > 28) {
-            suggestion = "Indoor cardio or early-morning workout";
-          }
-          return { ...day, suggestion };
-        });
-        setSuggestions(recs);
+    const fetchData = async () => {
+      try {
+        const weightRes = await axios.get("/api/weight?userId=alex123");
+        if (weightRes.data.success) setLogs(weightRes.data.data || []);
+
+        const weatherRes = await axios.get("/api/weather?days=7");
+        if (weatherRes.data.success) {
+          const recs = weatherRes.data.data.map((day: any) => {
+            const temp = parseFloat(day.avgTemp);
+            const desc = day.description.toLowerCase();
+            let suggestion = "Outdoor run or park workout";
+            let type = "Outdoor";
+            if (desc.includes("rain") || desc.includes("snow") || temp < 5) {
+              suggestion = "Indoor strength or yoga session";
+              type = "Indoor";
+            } else if (temp > 28) {
+              suggestion = "Indoor cardio or early-morning workout";
+              type = "Indoor";
+            }
+            return { ...day, suggestion, type };
+          });
+          setDays(recs);
+
+          const indoorCount = recs.filter((d) => d.type === "Indoor").length;
+          const outdoorCount = recs.filter((d) => d.type === "Outdoor").length;
+          setSummary([
+            { category: "Indoor", count: indoorCount },
+            { category: "Outdoor", count: outdoorCount },
+          ]);
+        }
+      } catch {
+        setError("Failed to load dashboard data");
       }
-    });
+    };
+    fetchData();
   }, []);
 
+  const saveWeight = async () => {
+    try {
+      const res = await axios.post("/api/weight", {
+        userId: "alex123",
+        weight: parseFloat(weight),
+        date: new Date().toISOString(),
+      });
+      if (res.data.success) {
+        setLogs([...logs, { date: new Date().toISOString(), weight: parseFloat(weight) }]);
+        setWeight("");
+        setError(null);
+      } else {
+        setError(res.data.error || "Failed to save weight");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    }
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-6">
+    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-8">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        Weekly Fitness Dashboard
+      </h2>
+
       {/* Weight Input */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Log today’s weight
-        </label>
+        <label className="block text-sm font-medium mb-2">Log today’s weight</label>
         <div className="flex gap-2">
           <input
             type="number"
@@ -74,10 +112,9 @@ export default function WeightTracker() {
           />
           <button
             disabled={!weight}
+            onClick={saveWeight}
             className={`px-4 py-2 rounded text-white ${
-              weight
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-gray-400 cursor-not-allowed"
+              weight ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400 cursor-not-allowed"
             }`}
           >
             Save
@@ -88,49 +125,54 @@ export default function WeightTracker() {
 
       {/* Weight Chart */}
       <div>
-        <h3 className="text-lg font-semibold mb-2">Progress Chart</h3>
+        <h3 className="text-lg font-semibold mb-2">Weight Progress</h3>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={logs}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
+            <XAxis dataKey="date" tickFormatter={(d) => new Date(d).toLocaleDateString()} />
             <YAxis tickFormatter={(v) => `${v} kg`} />
             <Tooltip />
-            <Line type="monotone" dataKey="weight" stroke="#ff7300" fill="#ffe0b2" />
+            <Line type="monotone" dataKey="weight" stroke="#ff7300" />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Forecast */}
+      {/* Daily Planner Cards */}
       <div>
-        <h3 className="text-lg font-semibold mb-2">5-Day Forecast</h3>
-        <ul className="space-y-2">
-          {forecast.map((day, i) => (
-            <li
-              key={i}
-              className={`flex items-center gap-2 px-3 py-2 rounded ${getTempColor(
+        <h3 className="text-lg font-semibold mb-2">Daily Planner</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {days.map((day) => (
+            <div
+              key={day.date}
+              className={`p-4 rounded-lg shadow flex flex-col gap-2 ${getTempColor(
                 parseFloat(day.avgTemp)
               )}`}
             >
-              <span>{getWeatherIcon(day.description)}</span>
-              <span className="font-medium">{day.date}</span>
-              <span>{day.avgTemp}°C — {day.description}</span>
-            </li>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold">{day.date}</span>
+                <span>{getWeatherIcon(day.description)}</span>
+              </div>
+              <p className="text-sm">
+                {day.avgTemp}°C — {day.description}
+              </p>
+              <p className="font-medium">💡 {day.suggestion}</p>
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
 
-      {/* Suggestions */}
+      {/* Weekly Summary Chart */}
       <div>
-        <h3 className="text-lg font-semibold mb-2">Workout Suggestions</h3>
-        <ul className="space-y-2">
-          {suggestions.map((s, i) => (
-            <li key={i} className="flex items-center gap-2">
-              <span>{getWeatherIcon(s.description)}</span>
-              <span className="font-medium">{s.date}</span>
-              <span>{s.suggestion}</span>
-            </li>
-          ))}
-        </ul>
+        <h3 className="text-lg font-semibold mb-2">Weekly Summary</h3>
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={summary}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="category" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="count" fill="#1e90ff" />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
