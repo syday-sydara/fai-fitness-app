@@ -1,98 +1,40 @@
+// app/api/progress/route.ts
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // cached Prisma client
+import { prisma } from "@/lib/prisma";
 
-// GET: fetch workouts + weights
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
 
   if (!userId) {
-    return NextResponse.json(
-      { success: false, error: "Missing userId" },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: "Missing userId" }, { status: 400 });
   }
 
   try {
-    const [workouts, weights] = await Promise.all([
-      prisma.workout.findMany({
-        where: { userId },
-        orderBy: { date: "desc" },
-      }),
-      prisma.weight.findMany({
-        where: { userId },
-        orderBy: { date: "desc" },
-      }),
-    ]);
+    const workouts = await prisma.workout.findMany({
+      where: { userId },
+      orderBy: { date: "desc" },
+    });
 
-    return NextResponse.json({ success: true, data: { workouts, weights } });
+    // Example readiness formula: base 5 + recent workouts count (capped at 10)
+    const recentWorkouts = workouts.filter(
+      (w) => new Date(w.date) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    );
+    const readinessScore = Math.min(10, 5 + recentWorkouts.length);
+
+    // Trend: group workouts by day and assign scores
+    const trend = Array.from({ length: 7 }).map((_, i) => {
+      const day = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const dayWorkouts = workouts.filter(
+        (w) => new Date(w.date).toDateString() === day.toDateString()
+      );
+      const score = Math.min(10, 5 + dayWorkouts.length);
+      return { date: day.toLocaleDateString("en-US", { month: "short", day: "numeric" }), score };
+    }).reverse();
+
+    return NextResponse.json({ success: true, data: { readinessScore, trend, workouts } });
   } catch (err) {
     console.error("Progress API error:", err);
-    return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
-      { status: 500 }
-    );
-  }
-}
-
-// POST: log new workout or weight
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const { type, userId, date, sets, reps, rpe, weight } = body;
-
-    if (!userId || !type) {
-      return NextResponse.json(
-        { success: false, error: "Missing userId or type" },
-        { status: 400 }
-      );
-    }
-
-    let record;
-    if (type === "workout") {
-      if (!sets || !reps || !rpe) {
-        return NextResponse.json(
-          { success: false, error: "Missing workout fields" },
-          { status: 400 }
-        );
-      }
-      record = await prisma.workout.create({
-        data: {
-          userId,
-          date: date ? new Date(date) : new Date(),
-          sets,
-          reps,
-          rpe,
-          weight,
-        },
-      });
-    } else if (type === "weight") {
-      if (!weight) {
-        return NextResponse.json(
-          { success: false, error: "Missing weight value" },
-          { status: 400 }
-        );
-      }
-      record = await prisma.weight.create({
-        data: {
-          userId,
-          date: date ? new Date(date) : new Date(),
-          weight,
-        },
-      });
-    } else {
-      return NextResponse.json(
-        { success: false, error: "Invalid type" },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: record }, { status: 201 });
-  } catch (err) {
-    console.error("Progress POST error:", err);
-    return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
   }
 }
